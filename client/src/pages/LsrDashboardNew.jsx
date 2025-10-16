@@ -5,7 +5,7 @@ import DashboardLayout from '../components/DashboardLayout'
 import { Plus, Clock, CheckCircle, History, ChevronLeft, X, ShoppingCart, Package, Calendar, ChevronRight, Download } from 'lucide-react'
 import { fetchRecommendedLoad, fetchRequests } from '../store/slices/loadRequestSlice'
 import axios from 'axios'
-import Base_url from '../Config'
+import BASE_URL from '../config'
 
 export default function LsrDashboardNew() {
   const navigate = useNavigate()

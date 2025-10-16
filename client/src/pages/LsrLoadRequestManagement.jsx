@@ -7,6 +7,7 @@ import { useToast } from '../hooks/useToast'
 import { Plus, ChevronLeft, X, ShoppingCart, Package, ChevronRight, Search, Trash2 } from 'lucide-react'
 import { fetchRecommendedLoad, fetchProducts, fetchPosmItems } from '../store/slices/loadRequestSlice'
 import axios from 'axios'
+import BASE_URL from '../config'
 
 export default function LsrLoadRequestManagement() {
   const navigate = useNavigate()
@@ -47,7 +48,7 @@ export default function LsrLoadRequestManagement() {
     const fetchRoutes = async () => {
       setLoadingRoutes(true)
       try {
-        const response = await axios.get('http://localhost:5000/api/routes')
+        const response = await axios.get(`${BASE_URL}/routes`)
         console.log('✅ Routes fetched:', response.data)
         setRoutes(response.data)
       } catch (error) {
@@ -75,15 +76,16 @@ export default function LsrLoadRequestManagement() {
   useEffect(() => {
     if (!hasManuallyAddedItems) {
       if (recommendedLoad?.commercialProducts && recommendedLoad.commercialProducts.length > 0) {
+        console.log('📦 Backend recommended data:', recommendedLoad.commercialProducts)
         const items = recommendedLoad.commercialProducts.map((product, index) => ({
           id: index + 1,
           sku: product.sku || '',
           name: product.name || '',
           uom: product.uom || 'PCS',
-          recommended: product.recommendedQty || 0,
+          recommended: product.recommendedQty || 0, // For display only
           preOrder: product.preOrderQty || 0,
           buffer: product.bufferQty || 0,
-          total: (product.recommendedQty || 0) + (product.preOrderQty || 0) + (product.bufferQty || 0),
+          total: (product.preOrderQty || 0) + (product.bufferQty || 0), // Only preOrder + buffer
           isRecommended: true // Mark as recommended item
         }))
         setCommercialItems(items)
@@ -141,26 +143,27 @@ export default function LsrLoadRequestManagement() {
       let response
       if (modalType === 'commercial') {
         // Search for commercial products
-        const url = `http://localhost:5000/api/products/search?query=${encodeURIComponent(searchTerm)}`
+        const url = `${BASE_URL}/products/search?query=${encodeURIComponent(searchTerm)}`
         console.log('📡 Fetching from:', url)
         response = await axios.get(url)
         console.log('✅ Products response:', response.data)
         
+        console.log('📊 Product data with avgSales:', response.data)
         setSearchResults(response.data.map(product => ({
           ...product,
-          orderQty: 100,
-          amount: product.mrp * 100
+          orderQty: 0,
+          amount: 0
         })))
       } else {
         // Search for POSM items
-        const url = `http://localhost:5000/api/posm/search?query=${encodeURIComponent(searchTerm)}`
+        const url = `${BASE_URL}/posm/search?query=${encodeURIComponent(searchTerm)}`
         console.log('📡 Fetching from:', url)
         response = await axios.get(url)
         console.log('✅ POSM response:', response.data)
         
         setSearchResults(response.data.map(item => ({
           ...item,
-          orderQty: 5
+          orderQty: 0
         })))
       }
     } catch (error) {
@@ -253,19 +256,26 @@ export default function LsrLoadRequestManagement() {
       const manuallyAddedItems = commercialItems.filter(item => !item.isRecommended && !selectedSkus.includes(item.sku))
       
       // Create new items from selected products
-      const newItems = selectedProducts.map((product, index) => ({
-        id: manuallyAddedItems.length + index + 1,
-        sku: product.sku,
-        name: product.name,
-        uom: 'PCS',
-        recommended: 0,
-        preOrder: product.orderQty || 0,
-        buffer: 0,
-        total: product.orderQty || 0,
-        mrp: product.mrp || 0,
-        amount: (product.mrp || 0) * (product.orderQty || 0),
-        isRecommended: false // Mark as manually added
-      }))
+      const newItems = selectedProducts.map((product, index) => {
+        const recommendedQty = product.avgSales || 0; // Use avgSales from backend (for display only)
+        const preOrderQty = Math.ceil(recommendedQty * 0.15); // 15% of recommended
+        const bufferQty = Math.ceil(recommendedQty * 0.10); // 10% of recommended
+        const orderQty = product.orderQty || 0;
+        
+        return {
+          id: manuallyAddedItems.length + index + 1,
+          sku: product.sku,
+          name: product.name,
+          uom: 'PCS',
+          recommended: recommendedQty, // For display only, not included in total
+          preOrder: preOrderQty,
+          buffer: bufferQty,
+          total: preOrderQty + bufferQty, // Only preOrder + buffer
+          mrp: product.mrp || 0,
+          amount: (product.mrp || 0) * (preOrderQty + bufferQty),
+          isRecommended: false // Mark as manually added
+        };
+      })
       
       // Replace all items with only manually added items
       setCommercialItems([...manuallyAddedItems, ...newItems])
@@ -347,7 +357,7 @@ export default function LsrLoadRequestManagement() {
       console.log('📤 Submitting load request:', requestData)
       
       // Step 1: Create the request (as DRAFT)
-      const createResponse = await axios.post('http://localhost:5000/api/requests', requestData, {
+      const createResponse = await axios.post(`${BASE_URL}/requests`, requestData, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -357,7 +367,7 @@ export default function LsrLoadRequestManagement() {
       
       // Step 2: Submit the request (change status to SUBMITTED)
       const submitResponse = await axios.post(
-        `http://localhost:5000/api/requests/${createResponse.data.id}/submit`,
+        `${BASE_URL}/requests/${createResponse.data.id}/submit`,
         {},
         {
           headers: {
@@ -530,19 +540,6 @@ export default function LsrLoadRequestManagement() {
           </div>
         </div>
         )
-      )}
-      
-      {/* Add Commercial Products Button (Below Table) */}
-      {activeTab === 'commercial' && (
-        <div className="mt-4">
-          <button
-            onClick={() => handleOpenModal('commercial')}
-            className="inline-flex items-center px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-sm"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Commercial Products
-          </button>
-        </div>
       )}
 
       {/* POSM Items Table */}

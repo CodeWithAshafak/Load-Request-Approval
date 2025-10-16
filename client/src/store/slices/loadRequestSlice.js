@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import axios from 'axios'
 
-import Base_url from '../../Config'
+import BASE_URL from '../../config'
 
 // Helper function to get headers with auth
 const getHeaders = () => {
@@ -18,7 +18,7 @@ export const fetchRequests = createAsyncThunk(
   async (params, { rejectWithValue }) => {
     try {
       const queryParams = new URLSearchParams(params).toString()
-      const response = await axios.get(`${Base_url}/requests?${queryParams}`, {
+      const response = await axios.get(`${BASE_URL}/requests?${queryParams}`, {
         headers: getHeaders()
       })
       return response.data
@@ -32,7 +32,7 @@ export const createRequest = createAsyncThunk(
   'loadRequest/createRequest',
   async (requestData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${Base_url}/requests`, requestData, {
+      const response = await axios.post(`${BASE_URL}/requests`, requestData, {
         headers: getHeaders()
       })
       return response.data
@@ -46,7 +46,7 @@ export const updateRequest = createAsyncThunk(
   'loadRequest/updateRequest',
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const response = await axios.patch(`${Base_url}/requests/${id}`, data, {
+      const response = await axios.patch(`${BASE_URL}/requests/${id}`, data, {
         headers: getHeaders()
       })
       return response.data
@@ -60,7 +60,7 @@ export const submitRequest = createAsyncThunk(
   'loadRequest/submitRequest',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${Base_url}/requests/${id}/submit`, {}, {
+      const response = await axios.post(`${BASE_URL}/requests/${id}/submit`, {}, {
         headers: getHeaders()
       })
       return response.data
@@ -74,7 +74,7 @@ export const approveRequest = createAsyncThunk(
   'loadRequest/approveRequest',
   async ({ id, modifiedData }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${Base_url}/requests/${id}/approve`, modifiedData || {}, {
+      const response = await axios.post(`${BASE_URL}/requests/${id}/approve`, modifiedData || {}, {
         headers: getHeaders()
       })
       return response.data
@@ -88,7 +88,7 @@ export const rejectRequest = createAsyncThunk(
   'loadRequest/rejectRequest',
   async ({ id, reason }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${Base_url}/requests/${id}/reject`, { reason }, {
+      const response = await axios.post(`${BASE_URL}/requests/${id}/reject`, { reason }, {
         headers: getHeaders()
       })
       return response.data
@@ -102,7 +102,7 @@ export const fetchProducts = createAsyncThunk(
   'loadRequest/fetchProducts',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${Base_url}/catalog/products`)
+      const response = await axios.get(`${BASE_URL}/catalog/products`)
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch products')
@@ -114,7 +114,7 @@ export const fetchPosmItems = createAsyncThunk(
   'loadRequest/fetchPosmItems',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${Base_url}/catalog/posm`)
+      const response = await axios.get(`${BASE_URL}/catalog/posm`)
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch POSM items')
@@ -126,7 +126,7 @@ export const fetchNotifications = createAsyncThunk(
   'loadRequest/fetchNotifications',
   async (userId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${Base_url}/notifications/${userId}`, {
+      const response = await axios.get(`${BASE_URL}/notifications/${userId}`, {
         headers: getHeaders()
       })
       console.log('Notifications fetched:', response.data)
@@ -143,7 +143,7 @@ export const fetchRecommendedLoad = createAsyncThunk(
   'loadRequest/fetchRecommendedLoad',
   async (userId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${Base_url}/lsr/${userId}/recommended-load`, {
+      const response = await axios.get(`${BASE_URL}/lsr/${userId}/recommended-load`, {
         headers: getHeaders()
       })
       return response.data

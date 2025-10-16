@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import axios from 'axios'
 
-import Base_url from '../../Config'
+import BASE_URL from '../../config'
 
 // Async thunk for login
 export const login = createAsyncThunk(
@@ -9,7 +9,7 @@ export const login = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const { email, password } = credentials
-      const response = await axios.post(`${Base_url}/auth/login`, { email, password })
+      const response = await axios.post(`${BASE_URL}/auth/login`, { email, password })
       localStorage.setItem('token', response.data.token)
       localStorage.setItem('user', JSON.stringify(response.data.user || response.data))
       return response.data

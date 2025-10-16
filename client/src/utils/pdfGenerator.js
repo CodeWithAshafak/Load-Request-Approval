@@ -1,5 +1,4 @@
-// PDF Generation Utility using jsPDF
-// Note: Install jsPDF with: npm install jspdf jspdf-autotable
+
 
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'

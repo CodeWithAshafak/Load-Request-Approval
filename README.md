@@ -62,13 +62,7 @@ A production-ready MERN stack application that allows two roles—LSR (Van Sales
    cp env.example .env
    ```
 
-   Configure your environment variables:
-   ```env
-   MONGODB_URI=mongodb://localhost:27017/lsr-system
-   JWT_SECRET=your-super-secret-jwt-key-here-change-in-production
-   PORT=5000
-   CORS_ORIGIN=http://localhost:5173
-   NODE_ENV=development
+   
    ```
 
 4. **Seed the database**
@@ -132,52 +126,6 @@ The system comes with pre-configured demo users:
 ### Health
 - `GET /health` - Health check endpoint
 
-## 📊 Data Models
-
-### Enhanced Load Request Structure
-```javascript
-{
-  id: "string",
-  requestNumber: "string",
-  lsrId: "string",
-  lsrName: "string",
-  route: "string",
-  notes: "string",
-  status: "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED",
-  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT",
-  createdAt: "date",
-  submittedAt: "date",
-  decidedAt: "date",
-  approverId: "string",
-  approverName: "string",
-  decisionReason: "string",
-  totalValue: "number",
-  isUrgent: "boolean",
-  deliveryDate: "date",
-  specialInstructions: "string",
-  commercialProducts: [
-    {
-      id: "string",
-      sku: "string",
-      name: "string",
-      uom: "CASE" | "UNIT",
-      qty: "number",
-      unitPrice: "number",
-      totalValue: "number"
-    }
-  ],
-  posmItems: [
-    {
-      id: "string",
-      code: "string",
-      description: "string",
-      qty: "number",
-      unitValue: "number",
-      totalValue: "number"
-    }
-  ]
-}
-```
 
 ## 🎨 UI Features
 
@@ -302,19 +250,5 @@ project-root/
    - Check Node.js version compatibility
    - Verify all dependencies are installed
 
-## 📝 License
 
-This project is licensed under the MIT License.
 
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Contact the development team
-- Check the documentation
-
----
-
-**Built with ❤️ for efficient Load Service Request management**
-
-*Production-ready MERN stack application with comprehensive error handling, security features, and modern UI/UX.*

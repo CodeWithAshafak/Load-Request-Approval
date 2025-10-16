@@ -536,14 +536,17 @@ router.get("/lsr/:userId/recommended-load", authenticateToken, async (req, res) 
     const recommendedProducts = Object.values(productFrequency)
       .sort((a, b) => b.count - a.count)
       .slice(0, 3)
-      .map(item => ({
-        sku: item.sku,
-        name: item.name,
-        uom: item.uom,
-        recommendedQty: Math.ceil(item.totalQty / item.count), // Average quantity
-        preOrderQty: 0,
-        bufferQty: 0
-      }));
+      .map(item => {
+        const avgQty = Math.ceil(item.totalQty / item.count);
+        return {
+          sku: item.sku,
+          name: item.name,
+          uom: item.uom,
+          recommendedQty: avgQty, // Average quantity
+          preOrderQty: Math.ceil(avgQty * 0.15), // 15% of recommended as pre-order
+          bufferQty: Math.ceil(avgQty * 0.10) // 10% of recommended as buffer
+        };
+      });
     
     // Get top 3 POSM items (ordered by frequency)
     const recommendedPosm = Object.values(posmFrequency)
@@ -574,8 +577,8 @@ router.get("/lsr/:userId/recommended-load", authenticateToken, async (req, res) 
         name: product.name,
         uom: product.defaultUom || 'UNIT',
         recommendedQty: 100, // Default recommended quantity
-        preOrderQty: 0,
-        bufferQty: 0
+        preOrderQty: 15, // 15% of default recommended (15 units)
+        bufferQty: 10 // 10% of default recommended (10 units)
       }));
     }
     
