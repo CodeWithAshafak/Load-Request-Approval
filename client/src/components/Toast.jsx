@@ -42,7 +42,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 5000 }) => {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+    <div className="fixed top-4 right-4 z-[9999] animate-slide-in-right">
       <div className={`rounded-lg shadow-lg p-4 max-w-md border-l-4 ${getStyles()}`}>
         <div className="flex items-start">
           <div className="flex-shrink-0">

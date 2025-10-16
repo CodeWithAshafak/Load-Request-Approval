@@ -314,12 +314,16 @@ router.get("/products/search", async (req, res) => {
       // Get warehouse stock for this product
       const stock = await WarehouseStock.findOne({ skuId: product.sku });
       
-      const availableQty = stock?.availableQty || 0;
-      const reservedQty = stock?.reservedQty || 0;
+      // Generate realistic 4-digit stock numbers if not in database
+      const baseStock = stock?.availableQty || (Math.floor(Math.random() * 5000) + 3000); // 3000-8000
+      const baseReserved = stock?.reservedQty || (Math.floor(Math.random() * 2000) + 500); // 500-2500
+      
+      const availableQty = baseStock;
+      const reservedQty = baseReserved;
       const totalStock = availableQty + reservedQty;
       
       // Generate mock data for fields not in database
-      const avgSales = Math.floor(Math.random() * 30) + 10; // Random between 10-40
+      const avgSales = Math.floor(Math.random() * 50) + 30; // Random between 30-80
       const mrp = product.unitPrice || Math.floor(Math.random() * 500) + 50; // Use unitPrice or random
       
       return {
@@ -536,15 +540,21 @@ router.get("/lsr/:userId/recommended-load", authenticateToken, async (req, res) 
     const recommendedProducts = Object.values(productFrequency)
       .sort((a, b) => b.count - a.count)
       .slice(0, 3)
-      .map(item => {
+      .map((item, index) => {
         const avgQty = Math.ceil(item.totalQty / item.count);
+        // Ensure minimum realistic quantities and add variation
+        const minRecommended = 100;
+        const recommendedQty = Math.max(avgQty, minRecommended) + (index * 40); // Add variation: 100, 140, 180, etc.
+        const preOrderQty = Math.ceil(recommendedQty * 0.15); // 15% of recommended as pre-order
+        const bufferQty = Math.ceil(recommendedQty * 0.10); // 10% of recommended as buffer
+        
         return {
           sku: item.sku,
           name: item.name,
           uom: item.uom,
-          recommendedQty: avgQty, // Average quantity
-          preOrderQty: Math.ceil(avgQty * 0.15), // 15% of recommended as pre-order
-          bufferQty: Math.ceil(avgQty * 0.10) // 10% of recommended as buffer
+          recommendedQty: recommendedQty,
+          preOrderQty: preOrderQty,
+          bufferQty: bufferQty
         };
       });
     
@@ -552,11 +562,22 @@ router.get("/lsr/:userId/recommended-load", authenticateToken, async (req, res) 
     const recommendedPosm = Object.values(posmFrequency)
       .sort((a, b) => b.count - a.count)
       .slice(0, 3)
-      .map(item => ({
-        code: item.code,
-        description: item.description,
-        qty: Math.ceil(item.totalQty / item.count) // Average quantity
-      }));
+      .map((item, index) => {
+        const avgQty = Math.ceil(item.totalQty / item.count);
+        // Ensure minimum realistic quantities and add variation
+        const minRecommended = 150;
+        const recommendedQty = Math.max(avgQty, minRecommended) + (index * 50); // Add variation: 150, 200, 250, etc.
+        const preOrderQty = Math.ceil(recommendedQty * 0.15); // 15% of recommended
+        const bufferQty = Math.ceil(recommendedQty * 0.10); // 10% of recommended
+        
+        return {
+          code: item.code,
+          description: item.description,
+          recommendedQty: recommendedQty,
+          preOrderQty: preOrderQty,
+          bufferQty: bufferQty
+        };
+      });
     
     console.log('✅ Recommended products:', recommendedProducts.length);
     console.log('✅ Recommended POSM:', recommendedPosm.length);
@@ -572,14 +593,21 @@ router.get("/lsr/:userId/recommended-load", authenticateToken, async (req, res) 
         .sort({ sku: 1 })
         .limit(3);
       
-      finalProducts = popularProducts.map(product => ({
-        sku: product.sku,
-        name: product.name,
-        uom: product.defaultUom || 'UNIT',
-        recommendedQty: 100, // Default recommended quantity
-        preOrderQty: 15, // 15% of default recommended (15 units)
-        bufferQty: 10 // 10% of default recommended (10 units)
-      }));
+      finalProducts = popularProducts.map((product, index) => {
+        // Vary the default quantities for each product
+        const baseRecommended = 90 + (index * 50); // 90, 140, 190
+        const preOrderQty = Math.ceil(baseRecommended * 0.15);
+        const bufferQty = Math.ceil(baseRecommended * 0.10);
+        
+        return {
+          sku: product.sku,
+          name: product.name,
+          uom: product.defaultUom || 'UNIT',
+          recommendedQty: baseRecommended,
+          preOrderQty: preOrderQty,
+          bufferQty: bufferQty
+        };
+      });
     }
     
     if (recommendedPosm.length === 0) {
@@ -588,11 +616,20 @@ router.get("/lsr/:userId/recommended-load", authenticateToken, async (req, res) 
         .sort({ code: 1 })
         .limit(3);
       
-      finalPosm = popularPosm.map(item => ({
-        code: item.code,
-        description: item.description,
-        qty: 5 // Default quantity
-      }));
+      finalPosm = popularPosm.map((item, index) => {
+        // Vary the default quantities for each POSM item
+        const baseRecommended = 120 + (index * 60); // 120, 180, 240
+        const preOrderQty = Math.ceil(baseRecommended * 0.15);
+        const bufferQty = Math.ceil(baseRecommended * 0.10);
+        
+        return {
+          code: item.code,
+          description: item.description,
+          recommendedQty: baseRecommended,
+          preOrderQty: preOrderQty,
+          bufferQty: bufferQty
+        };
+      });
     }
     
     res.json({
@@ -601,6 +638,22 @@ router.get("/lsr/:userId/recommended-load", authenticateToken, async (req, res) 
     });
   } catch (err) {
     console.error('❌ Error fetching recommended load:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /notifications/:userId → get notifications for a user
+router.get("/notifications/:userId", authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    console.log('🔔 Fetching notifications for user:', userId);
+    
+    // For now, return empty notifications array
+    // You can implement actual notification logic later
+    res.json([]);
+  } catch (err) {
+    console.error('❌ Error fetching notifications:', err);
     res.status(500).json({ message: err.message });
   }
 });
