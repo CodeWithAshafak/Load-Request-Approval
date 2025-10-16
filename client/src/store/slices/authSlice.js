@@ -11,7 +11,7 @@ export const login = createAsyncThunk(
       const { email, password } = credentials
       const response = await axios.post(`${Base_url}/auth/login`, { email, password })
       localStorage.setItem('token', response.data.token)
-      localStorage.setItem('user', JSON.stringify(response.data))
+      localStorage.setItem('user', JSON.stringify(response.data.user || response.data))
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Login failed')
@@ -77,7 +77,7 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false
-        state.user = action.payload
+        state.user = action.payload.user || action.payload
         state.token = action.payload.token
         state.isAuthenticated = true
         state.error = null

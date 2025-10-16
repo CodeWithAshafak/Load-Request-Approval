@@ -26,7 +26,7 @@ export default function Login() {
     try {
       const result = await dispatch(login(formData))
       if (result.meta.requestStatus === 'fulfilled') {
-        const userRole = result.payload.role
+        const userRole = result.payload.user?.role || result.payload.role
         navigate(userRole === 'LSR' ? '/lsr' : '/logistics')
       }
     } catch (error) {
