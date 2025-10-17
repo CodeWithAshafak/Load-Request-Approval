@@ -77,17 +77,26 @@ export default function LsrLoadRequestManagement() {
     if (!hasManuallyAddedItems) {
       if (recommendedLoad?.commercialProducts && recommendedLoad.commercialProducts.length > 0) {
         console.log('📦 Backend recommended data:', recommendedLoad.commercialProducts)
-        const items = recommendedLoad.commercialProducts.map((product, index) => ({
-          id: index + 1,
-          sku: product.sku || '',
-          name: product.name || '',
-          uom: product.uom || 'PCS',
-          recommended: product.recommendedQty || 0, // For display only
-          preOrder: product.preOrderQty || 0,
-          buffer: product.bufferQty || 0,
-          total: (product.preOrderQty || 0) + (product.bufferQty || 0), // Only preOrder + buffer
-          isRecommended: true // Mark as recommended item
-        }))
+        const items = recommendedLoad.commercialProducts.map((product, index) => {
+          const preOrder = product.preOrderQty || 0;
+          const buffer = 0; // Set buffer to 0 initially for recommended items
+          const total = preOrder + buffer;
+          const mrp = product.mrp || 0;
+          
+          return {
+            id: index + 1,
+            sku: product.sku || '',
+            name: product.name || '',
+            uom: product.uom || 'PCS',
+            recommended: product.recommendedQty || 0, // For display only
+            preOrder: preOrder,
+            buffer: buffer,
+            total: total,
+            mrp: mrp,
+            amount: mrp * total, // Calculate amount for total display
+            isRecommended: true // Mark as recommended item
+          };
+        })
         setCommercialItems(items)
       }
       if (recommendedLoad?.posmItems && recommendedLoad.posmItems.length > 0) {
@@ -97,8 +106,8 @@ export default function LsrLoadRequestManagement() {
           description: item.description || '',
           recommended: item.recommendedQty || 0, // For display only
           preOrder: item.preOrderQty || 0,
-          buffer: item.bufferQty || 0,
-          total: (item.preOrderQty || 0) + (item.bufferQty || 0), // Only preOrder + buffer
+          buffer: 0, // Set buffer to 0 initially for recommended items
+          total: (item.preOrderQty || 0) + 0, // Only preOrder + buffer
           isRecommended: true // Mark as recommended item
         }))
         setPosmItems(items)
@@ -166,7 +175,8 @@ export default function LsrLoadRequestManagement() {
         
         setSearchResults(response.data.map(item => ({
           ...item,
-          orderQty: 0
+          orderQty: 0,
+          amount: 0
         })))
       }
     } catch (error) {
@@ -282,9 +292,9 @@ export default function LsrLoadRequestManagement() {
       
       // Create new items from selected products
       const newItems = selectedProducts.map((product, index) => {
-        const recommendedQty = product.avgSales || 0; // Use avgSales from backend (for display only)
         const orderQty = product.orderQty || 0; // User-entered quantity
-        const preOrderQty = orderQty; // Use the user-entered quantity as preOrder
+        const recommendedQty = orderQty; // User-entered quantity goes to recommended
+        const preOrderQty = 0; // Pre-order starts at 0
         const bufferQty = 0; // Set buffer to 0 initially, user can adjust in the table
         
         return {
@@ -292,12 +302,12 @@ export default function LsrLoadRequestManagement() {
           sku: product.sku,
           name: product.name,
           uom: 'PCS',
-          recommended: recommendedQty, // For display only, not included in total
+          recommended: recommendedQty, // User-entered quantity
           preOrder: preOrderQty,
           buffer: bufferQty,
-          total: preOrderQty + bufferQty, // preOrder + buffer (user can adjust buffer later)
+          total: recommendedQty + bufferQty, // recommended + buffer
           mrp: product.mrp || 0,
-          amount: (product.mrp || 0) * (preOrderQty + bufferQty),
+          amount: (product.mrp || 0) * (recommendedQty + bufferQty),
           isRecommended: false // Mark as manually added
         };
       })
@@ -315,17 +325,18 @@ export default function LsrLoadRequestManagement() {
       // Create new items from selected products
       const newItems = selectedProducts.map((item, index) => {
         const orderQty = item.orderQty || 0; // User-entered quantity
-        const preOrderQty = orderQty; // Use the user-entered quantity as preOrder
+        const recommendedQty = orderQty; // User-entered quantity goes to recommended
+        const preOrderQty = 0; // Pre-order starts at 0
         const bufferQty = 0; // Set buffer to 0 initially, user can adjust in the table
         
         return {
           id: manuallyAddedItems.length + index + 1,
           code: item.code,
           description: item.description,
-          recommended: 0, // No recommended qty for manually added items
+          recommended: recommendedQty, // User-entered quantity
           preOrder: preOrderQty,
           buffer: bufferQty,
-          total: preOrderQty + bufferQty, // preOrder + buffer (user can adjust buffer later)
+          total: recommendedQty + bufferQty, // recommended + buffer
           isRecommended: false // Mark as manually added
         };
       })
@@ -555,8 +566,8 @@ export default function LsrLoadRequestManagement() {
                             i.id === item.id ? { 
                               ...i, 
                               buffer: newBuffer, 
-                              total: i.preOrder + newBuffer,
-                              amount: (i.mrp || 0) * (i.preOrder + newBuffer)
+                              total: i.recommended + newBuffer,
+                              amount: (i.mrp || 0) * (i.recommended + newBuffer)
                             } : i
                           )
                           setCommercialItems(newItems)
@@ -622,7 +633,7 @@ export default function LsrLoadRequestManagement() {
                             i.id === item.id ? { 
                               ...i, 
                               buffer: newBuffer, 
-                              total: i.preOrder + newBuffer
+                              total: i.recommended + newBuffer
                             } : i
                           )
                           setPosmItems(newItems)
@@ -712,19 +723,13 @@ export default function LsrLoadRequestManagement() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                           {modalType === 'commercial' ? 'Product Name' : 'Description'}
                         </th>
-                        {modalType === 'commercial' && (
-                          <>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">MRP</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Stock</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Reserved</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Available</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Avg Sales/Day</th>
-                          </>
-                        )}
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">MRP</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Stock</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Reserved</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Available</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Avg Sales/Day</th>
                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Order Qty</th>
-                        {modalType === 'commercial' && (
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Amount</th>
-                        )}
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Amount</th>
                         <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Action</th>
                       </tr>
                     </thead>
@@ -733,48 +738,40 @@ export default function LsrLoadRequestManagement() {
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm text-gray-900">{item.sku || item.code}</td>
                           <td className="px-4 py-3 text-sm text-gray-900">{item.name || item.description}</td>
-                          {modalType === 'commercial' && (
-                            <>
-                              <td className="px-4 py-3 text-center text-sm text-gray-900">₹{item.mrp}</td>
-                              <td className="px-4 py-3 text-center text-sm text-gray-900">{item.stock}</td>
-                              <td className="px-4 py-3 text-center text-sm text-gray-900">{item.reserved}</td>
-                              <td className="px-4 py-3 text-center text-sm text-green-600 font-medium">{item.available}</td>
-                              <td className="px-4 py-3 text-center text-sm text-gray-900">{item.avgSales}</td>
-                            </>
-                          )}
+                          <td className="px-4 py-3 text-center text-sm text-gray-900">₹{item.mrp}</td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-900">{item.stock}</td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-900">{item.reserved}</td>
+                          <td className="px-4 py-3 text-center text-sm text-green-600 font-medium">{item.available}</td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-900">{item.avgSales}</td>
                           <td className="px-4 py-3 text-center">
                             <input
                               type="number"
                               value={item.orderQty}
                               onChange={(e) => {
-                                const newQty = parseInt(e.target.value) || 0;
+                                const value = e.target.value;
+                                const newQty = value === '' ? 0 : parseInt(value);
                                 const newResults = [...searchResults]
                                 newResults[index].orderQty = newQty
-                                if (modalType === 'commercial') {
-                                  newResults[index].amount = item.mrp * newQty
-                                  // Show warning if exceeds available stock
-                                  if (newQty > item.available) {
-                                    newResults[index].exceedsStock = true
-                                  } else {
-                                    newResults[index].exceedsStock = false
-                                  }
+                                newResults[index].amount = item.mrp * newQty
+                                // Show warning if exceeds available stock
+                                if (newQty > item.available) {
+                                  newResults[index].exceedsStock = true
+                                } else {
+                                  newResults[index].exceedsStock = false
                                 }
                                 setSearchResults(newResults)
                               }}
                               className={`w-20 px-2 py-1 text-center border rounded text-sm focus:ring-2 ${
-                                modalType === 'commercial' && item.orderQty > item.available 
+                                item.orderQty > item.available 
                                   ? 'border-red-500 bg-red-50 focus:ring-red-500' 
                                   : 'border-gray-300 focus:ring-blue-500'
                               }`}
                               min="0"
-                              max={modalType === 'commercial' ? item.available : undefined}
                             />
                           </td>
-                          {modalType === 'commercial' && (
-                            <td className="px-4 py-3 text-center text-sm font-medium text-gray-900">
-                              ₹{item.amount?.toFixed(2) || '0.00'}
-                            </td>
-                          )}
+                          <td className="px-4 py-3 text-center text-sm font-medium text-gray-900">
+                            ₹{item.amount?.toFixed(2) || '0.00'}
+                          </td>
                           <td className="px-4 py-3 text-center">
                             {selectedProducts.find(p => (p.sku || p.code) === (item.sku || item.code)) ? (
                               <span className="text-green-600 text-sm font-medium">✓ Added</span>
