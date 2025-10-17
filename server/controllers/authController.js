@@ -21,21 +21,43 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email, password });
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    // Find user by email (case-insensitive)
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({ message: 'Account is deactivated' });
+    }
+
+    // Use bcrypt to compare password
+    const bcrypt = await import('bcryptjs');
+    const isPasswordValid = await bcrypt.default.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
     
-    // Generate JWT token
+    // Generate JWT token with consistent user ID field
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '24h' }
     );
     
     // Return user data without password
     const userData = {
-      id: user._id,
+      userId: user.id,
       name: user.name,
       email: user.email,
       role: user.role
@@ -47,6 +69,7 @@ export const login = async (req, res) => {
       user: userData
     });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ message: err.message });
   }
 };

@@ -503,11 +503,13 @@ router.post("/auth/login", async (req, res) => {
     );
     
     res.json({
-      userId: user.id,
-      userName: user.name,
-      email: user.email,
-      role: user.role,
-      token
+      token,
+      user: {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     });
   } catch (err) {
     console.error('Login error:', err);
